@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hospital Readmission Analysis – DACS08</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --card2: #22263a;
+      --border: #2e3250;
+      --accent: #4f8ef7;
+      --red: #ef4444;
+      --green: #22c55e;
+      --orange: #f97316;
+      --yellow: #facc15;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1e2a4a 0%, #0f1117 60%);
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 2rem 1.5rem;
+      text-align: center;
+    }
+    header .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: .25rem .75rem;
+      border-radius: 999px;
+      margin-bottom: .8rem;
+    }
+    header h1 { font-size: clamp(1.5rem,4vw,2.4rem); font-weight: 800; }
+    header h1 span { color: var(--accent); }
+    header p  { color: var(--muted); margin-top: .5rem; font-size: .95rem; }
+    header .links { margin-top: 1rem; display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+    header .links a {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); text-decoration: none;
+      padding: .45rem 1.1rem; border-radius: 8px; font-size: .85rem;
+      transition: background .2s;
+    }
+    header .links a:hover { background: var(--accent); border-color: var(--accent); }
+
+    /* ── Nav tabs ───────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15,17,23,.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      display: flex; gap: 0; overflow-x: auto;
+      scrollbar-width: none;
+    }
+    nav::-webkit-scrollbar { display: none; }
+    nav button {
+      background: none; border: none; color: var(--muted);
+      padding: .9rem 1.2rem; font-size: .85rem; font-weight: 600;
+      cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent;
+      transition: all .2s;
+    }
+    nav button:hover   { color: var(--text); }
+    nav button.active  { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── Section wrapper ────────────────────────────────── */
+    .section { display: none; padding: 2rem; max-width: 1400px; margin: 0 auto; }
+    .section.active { display: block; }
+
+    /* ── Section title ──────────────────────────────────── */
+    .sec-title {
+      font-size: 1.4rem; font-weight: 700; margin-bottom: 1.5rem;
+      padding-bottom: .6rem; border-bottom: 2px solid var(--border);
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .sec-title .icon { font-size: 1.5rem; }
+
+    /* ── KPI grid ───────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem; margin-bottom: 2rem;
+    }
+    .kpi {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.2rem 1rem; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .kpi::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--kpi-color, var(--accent));
+    }
+    .kpi .val  { font-size: 1.8rem; font-weight: 800; color: var(--kpi-color, var(--accent)); }
+    .kpi .lbl  { font-size: .78rem; color: var(--muted); margin-top: .2rem; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ── Chart grid ─────────────────────────────────────── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 1.5rem; margin-bottom: 2rem;
+    }
+    .chart-grid.single { grid-template-columns: 1fr; }
+    .chart-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .chart-card .chart-header {
+      padding: .9rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600; font-size: .9rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .chart-card .chart-header .tag {
+      font-size: .7rem; padding: .2rem .6rem; border-radius: 999px;
+      font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .tag-blue   { background: #1e3a8a44; color: #60a5fa; }
+    .tag-red    { background: #7f1d1d44; color: #f87171; }
+    .tag-green  { background: #14532d44; color: #4ade80; }
+    .tag-orange { background: #7c2d1244; color: #fb923c; }
+    .tag-purple { background: #3b0764; color: #c084fc; }
+    .chart-card img {
+      width: 100%; display: block;
+      background: #fff;
+    }
+    .chart-card .insight {
+      padding: .85rem 1.2rem;
+      font-size: .83rem; color: var(--muted);
+      border-top: 1px solid var(--border);
+      line-height: 1.55;
+    }
+    .chart-card .insight strong { color: var(--text); }
+
+    /* ── Data table ─────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin-bottom: 2rem; }
+    table {
+      width: 100%; border-collapse: collapse;
+      background: var(--card); border-radius: var(--radius);
+      overflow: hidden; font-size: .87rem;
+    }
+    thead tr { background: var(--card2); }
+    th {
+      padding: .7rem 1rem; text-align: left;
+      font-size: .75rem; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--muted); font-weight: 700;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: .65rem 1rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--card2); }
+    .rate-high { color: var(--red);    font-weight: 700; }
+    .rate-mid  { color: var(--orange); font-weight: 700; }
+    .rate-ok   { color: var(--green);  font-weight: 700; }
+
+    /* ── Alert box ──────────────────────────────────────── */
+    .alert {
+      border-radius: var(--radius); padding: 1rem 1.2rem;
+      margin-bottom: 1.2rem; font-size: .88rem; display: flex; gap: .8rem;
+      align-items: flex-start;
+    }
+    .alert-warn  { background: #451a0344; border: 1px solid #f97316; }
+    .alert-info  { background: #1e3a8a44; border: 1px solid #4f8ef7; }
+    .alert-caution { background: #7f1d1d44; border: 1px solid #ef4444; }
+    .alert-icon  { font-size: 1.2rem; line-height: 1; margin-top: .1rem; }
+
+    /* ── Footer ─────────────────────────────────────────── */
+    footer {
+      text-align: center; padding: 2rem; color: var(--muted); font-size: .82rem;
+      border-top: 1px solid var(--border); margin-top: 2rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .chart-grid { grid-template-columns: 1fr; }
+      .kpi .val   { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ──────────────────────────── HEADER ──────────────────────── -->
+<header>
+  <div class="badge">DACS08 · Portfolio Project</div>
+  <h1>🏥 Hospital <span>Readmission</span> Analysis</h1>
+  <p>Improving Patient Care Through Data Analytics &nbsp;|&nbsp; UCI Diabetes 130-US Hospitals Dataset (1999–2008)</p>
+  <div class="links">
+    <a href="https://github.com/LORDhariwansh/hospital-readmission-analysis" target="_blank">
+      ⭐ GitHub Repo
+    </a>
+    <a href="https://archive.ics.uci.edu/dataset/296/diabetes+130-us+hospitals+for+years+1999-2008" target="_blank">
+      📦 Dataset (UCI)
+    </a>
+    <a href="https://github.com/LORDhariwansh/hospital-readmission-analysis/blob/master/PROJECT_DOCUMENTATION.md" target="_blank">
+      📄 Full Report
+    </a>
+    <a href="https://github.com/LORDhariwansh/hospital-readmission-analysis/blob/master/phase8_dax_measures.dax" target="_blank">
+      📐 DAX Measures
+    </a>
+    <a href="https://github.com/LORDhariwansh/hospital-readmission-analysis/blob/master/phase6_sql_queries.sql" target="_blank">
+      🗃️ SQL Queries
+    </a>
+  </div>
+</header>
+
+<!-- ──────────────────────────── NAV ─────────────────────────── -->
+<nav>
+  <button class="active" onclick="show('overview',this)">📊 Overview</button>
+  <button onclick="show('eda',this)">🔍 EDA</button>
+  <button onclick="show('medium',this)">📈 Medium Analysis</button>
+  <button onclick="show('ml',this)">🤖 Machine Learning</button>
+  <button onclick="show('segments',this)">👥 Patient Segments</button>
+  <button onclick="show('sql',this)">🗃️ SQL Results</button>
+  <button onclick="show('insights',this)">💡 Insights</button>
+  <button onclick="show('recommendations',this)">✅ Recommendations</button>
+</nav>
+
+<!-- ══════════════════════ SECTION: OVERVIEW ══════════════════ -->
+<section id="overview" class="section active">
+  <div class="sec-title"><span class="icon">📊</span> Executive Overview</div>
+
+  <div class="kpi-grid">
+    <div class="kpi" style="--kpi-color:#4f8ef7">
+      <div class="val">101,766</div><div class="lbl">Total Encounters</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#a78bfa">
+      <div class="val">71,518</div><div class="lbl">Unique Patients</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#ef4444">
+      <div class="val">11,357</div><div class="lbl">30-Day Readmissions</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#ef4444">
+      <div class="val">11.16%</div><div class="lbl">Readmission Rate</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#22c55e">
+      <div class="val">4.40</div><div class="lbl">Avg LOS (days)</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#f97316">
+      <div class="val">16.02</div><div class="lbl">Avg Medications</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#facc15">
+      <div class="val">43.10</div><div class="lbl">Avg Lab Procedures</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#06b6d4">
+      <div class="val">7.42</div><div class="lbl">Avg Diagnoses</div>
+    </div>
+  </div>
+
+  <div class="chart-grid single">
+    <div class="chart-card">
+      <div class="chart-header">Executive Dashboard Summary <span class="tag tag-blue">All Phases</span></div>
+      <img src="plots/executive_dashboard_summary.png" alt="Executive Dashboard" />
+      <div class="insight"><strong>Overview:</strong> 101,766 hospital encounters analyzed. 11.16% were readmitted within 30 days. High-utilization patients (6+ prior visits) reach 25.51% readmission rate — 3× higher than patients with no prior visits.</div>
+    </div>
+  </div>
+
+  <div class="chart-grid single">
+    <div class="chart-card">
+      <div class="chart-header">Patient & Clinical Overview <span class="tag tag-purple">Phase 3</span></div>
+      <img src="plots/patient_clinical_overview.png" alt="Patient Clinical Overview" />
+      <div class="insight"><strong>Three-panel view:</strong> Target distribution (53.9% not readmitted), readmission by race (small differences, interpret cautiously), and diagnosis burden showing both LOS and readmission rate increase significantly with more diagnoses.</div>
+    </div>
+  </div>
+
+  <div class="sec-title" style="margin-top:2rem"><span class="icon">🚨</span> Data Quality Highlights</div>
+  <div class="alert alert-caution">
+    <span class="alert-icon">⚠️</span>
+    <div><strong>Weight column:</strong> 96.87% missing (98,569 of 101,766 records). Weight analysis applies to only 3.13% of patients. All weight-based conclusions must be interpreted with extreme caution.</div>
+  </div>
+  <div class="alert alert-warn">
+    <span class="alert-icon">⚠️</span>
+    <div><strong>Medical Specialty:</strong> 49.08% missing. Specialty-level analysis applies only to recorded specialties (~51,817 encounters).</div>
+  </div>
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><strong>No date fields exist</strong> in this dataset. Time-series trend analysis cannot be performed. All encounters are from 1999–2008 but no specific date column is available.</div>
+  </div>
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><strong>No cost/financial data.</strong> Financial impact analysis is not possible from this dataset alone. No fabricated costs were used.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════ SECTION: EDA ═══════════════════════ -->
+<section id="eda" class="section">
+  <div class="sec-title"><span class="icon">🔍</span> Phase 3 – Exploratory Data Analysis (10 Basic Questions)</div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">Q1: Readmission by Age Group <span class="tag tag-blue">Q1</span></div>
+      <img src="plots/q1_readmit_by_age.png" alt="Readmission by Age" />
+      <div class="insight"><strong>Key finding:</strong> [20-30) age group has 14.24% readmission rate — the highest. Older patients (80-90) show 12.08%. The pattern is non-linear, likely reflecting disease management differences across life stages.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Q2: LOS by Medical Specialty <span class="tag tag-blue">Q2</span></div>
+      <img src="plots/q2_los_by_specialty.png" alt="LOS by Specialty" />
+      <div class="insight"><strong>Key finding:</strong> Nephrology (5.0d), Pulmonology (5.2d), and Surgery-Cardiovascular (5.8d) have the longest average stays. ObGyn (3.1d) and Urology (3.4d) are shortest. Note: 49% of specialty data is missing.</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">Q3: Emergency Visits vs Readmission ⭐ <span class="tag tag-red">Top Signal</span></div>
+      <img src="plots/q3_emergency_vs_readmit.png" alt="Emergency vs Readmission" />
+      <div class="insight"><strong>Strongest predictor:</strong> Patients with 4+ prior emergency visits have <strong>28.54% readmission rate</strong> vs 10.47% for patients with none — nearly 3× higher. This is the most actionable risk factor.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Q4: Diabetes Medication vs Readmission <span class="tag tag-blue">Q4</span></div>
+      <img src="plots/q4_diabetes_med_readmit.png" alt="Diabetes Medication" />
+      <div class="insight"><strong>Finding:</strong> Patients on diabetes medication: 11.63% readmit rate vs 9.60% without. Difference is modest — diabetes medication alone is not a strong predictor. Co-morbidities matter more.</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">Q5: Medication Change vs Readmission <span class="tag tag-orange">Q5</span></div>
+      <img src="plots/q5_med_change_readmit.png" alt="Medication Change" />
+      <div class="insight"><strong>Finding:</strong> Changed medication → 11.82% readmit rate. No change → 10.59%. Patients with changed medications may have clinical instability at discharge.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Q6: Lab Procedures vs Readmission <span class="tag tag-blue">Q6</span></div>
+      <img src="plots/q6_lab_proc_readmit.png" alt="Lab Procedures" />
+      <div class="insight"><strong>Finding:</strong> Readmission rate is relatively flat across lab procedure counts (~11%). Slight uptick at 80+ lab tests may reflect high-complexity monitoring cases.</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">Q7: Readmission by Race & Gender <span class="tag tag-blue">Q7</span></div>
+      <img src="plots/q7_race_gender_readmit.png" alt="Race and Gender" />
+      <div class="insight"><strong>⚠️ Interpret cautiously:</strong> Caucasian 11.29%, AfricanAmerican 11.22%, Hispanic 10.41%, Asian 10.14%. Differences are <strong>very small</strong>. These cannot be causally attributed to race/gender — social determinants of health (SDOH) are absent from this dataset.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Q8: Weight vs Readmission <span class="tag tag-red">96.87% Missing</span></div>
+      <img src="plots/q8_weight_readmit.png" alt="Weight Readmission" />
+      <div class="insight"><strong>⚠️ Data limitation:</strong> Only 3,197 patients (3.13%) have weight data. Results are not representative and cannot be generalized. No conclusions should be drawn from this chart.</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">Q9: Medications vs Length of Stay <span class="tag tag-green">Q9</span></div>
+      <img src="plots/q9_medications_vs_los.png" alt="Medications vs LOS" />
+      <div class="insight"><strong>Strong correlation:</strong> Low meds (1-5): 2.28d → Moderate (6-15): 3.50d → High (16-25): 5.04d → Very High (26+): <strong>7.31 days</strong>. Medication burden is a clear proxy for clinical complexity.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Q10: Outpatient Visits vs Readmission <span class="tag tag-blue">Q10</span></div>
+      <img src="plots/q10_outpatient_readmit.png" alt="Outpatient Visits" />
+      <div class="insight"><strong>Finding:</strong> 0 visits → 10.67%, 1 visit → 13.92%, 2 visits → 13.75%. Patients with some prior outpatient history show modestly higher readmission, possibly reflecting ongoing disease management needs.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ SECTION: MEDIUM ════════════════════ -->
+<section id="medium" class="section">
+  <div class="sec-title"><span class="icon">📈</span> Phase 4 – Medium-Level Analysis</div>
+
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><strong>M1: Time-Series Analysis — NOT AVAILABLE.</strong> The dataset has no date column. A trend-over-time analysis cannot be performed with available data.</div>
+  </div>
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><strong>M9: Patient Satisfaction — NOT AVAILABLE.</strong> No satisfaction column exists in this dataset.</div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">M2: Diagnosis Burden vs LOS & Readmission <span class="tag tag-orange">M2</span></div>
+      <img src="plots/m2_diagnosis_burden.png" alt="Diagnosis Burden" />
+      <div class="insight"><strong>Clear trend:</strong> Low burden (1-3): 2.74d LOS, 6.97% readmit → Very High (10+): 5.10d LOS, 14.78% readmit. More diagnoses = longer stays + higher readmission. Strong clinical evidence for comorbidity management.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">M5: Prior Visits by Diagnosis Category <span class="tag tag-blue">M5</span></div>
+      <img src="plots/m5_visits_by_diagnosis.png" alt="Visits by Diagnosis" />
+      <div class="insight"><strong>Diabetes patients</strong> have the highest avg prior inpatient visits (0.89) and emergency visits (0.35), indicating chronic disease management challenges. Mental Disorders patients have high emergency visit history (0.37).</div>
+    </div>
+  </div>
+
+  <div class="chart-grid single">
+    <div class="chart-card">
+      <div class="chart-header">M6: Diabetes Medication Indicators vs Readmission (23 Medications) <span class="tag tag-purple">M6</span></div>
+      <img src="plots/m6_medication_readmit_comparison.png" alt="Medication Indicators" />
+      <div class="insight"><strong>Insulin</strong> is the most-used medication (53.44% of patients). Insulin users: 12.14% readmit vs 10.04% for non-users. Repaglinide users show 13.32% readmit rate — highest among medications with sufficient data. Metformin users surprisingly have <em>lower</em> readmit rate (9.70%) than non-users.</div>
+    </div>
+  </div>
+
+  <div class="sec-title" style="margin-top:2rem"><span class="icon">🏥</span> M3: Discharge Disposition (Available Field)</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Discharge Disposition ID</th><th>Patient Count</th><th>Readmission Rate</th><th>Risk Level</th></tr></thead>
+      <tbody>
+        <tr><td>15 (Critical Access Hospital)</td><td>63</td><td class="rate-high">44.44%</td><td>🔴 Very High</td></tr>
+        <tr><td>28 (Psychiatric Facility)</td><td>139</td><td class="rate-high">36.69%</td><td>🔴 Very High</td></tr>
+        <tr><td>22 (Rehab Facility)</td><td>1,993</td><td class="rate-high">27.70%</td><td>🔴 High</td></tr>
+        <tr><td>5 (SNF)</td><td>1,184</td><td class="rate-high">20.86%</td><td>🟠 High</td></tr>
+        <tr><td>2 (Short-term hospital)</td><td>2,128</td><td class="rate-mid">16.07%</td><td>🟠 Medium</td></tr>
+        <tr><td>3 (SNF)</td><td>13,954</td><td class="rate-mid">14.66%</td><td>🟠 Medium</td></tr>
+        <tr><td>6 (Home w/ health service)</td><td>12,902</td><td class="rate-mid">12.70%</td><td>🟡 Average</td></tr>
+        <tr><td>1 (Discharged to home)</td><td>~60,000+</td><td class="rate-ok">~9.5%</td><td>🟢 Lower</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════ SECTION: ML ════════════════════════ -->
+<section id="ml" class="section">
+  <div class="sec-title"><span class="icon">🤖</span> Phase 5 – Machine Learning (30-Day Readmission Prediction)</div>
+
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><strong>Healthcare Recall Priority:</strong> In readmission prediction, <strong>Recall (Sensitivity)</strong> is the primary metric. A False Negative (missed readmission) is more harmful than a False Positive (unnecessary follow-up call). All models use <code>class_weight='balanced'</code> to handle 11.16% class imbalance.</div>
+  </div>
+
+  <div class="sec-title" style="font-size:1rem; border:none; margin-bottom:.8rem">Model Performance Comparison</div>
+  <div class="table-wrap" style="margin-bottom:2rem">
+    <table>
+      <thead><tr><th>Model</th><th>ROC-AUC ⭐</th><th>Recall (Class 1) ⭐</th><th>Precision</th><th>F1-Score</th><th>Accuracy</th></tr></thead>
+      <tbody>
+        <tr><td>Logistic Regression</td><td>0.6458</td><td class="rate-mid">0.5161</td><td>0.172</td><td>0.258</td><td>0.6688</td></tr>
+        <tr><td>Decision Tree</td><td>0.6618</td><td class="rate-mid">0.5980</td><td>0.174</td><td>0.270</td><td>0.6390</td></tr>
+        <tr style="background:var(--card2)"><td><strong>Random Forest ✅ Best</strong></td><td class="rate-ok"><strong>0.6692</strong></td><td class="rate-ok"><strong>0.5795</strong></td><td><strong>0.178</strong></td><td><strong>0.273</strong></td><td>0.6552</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">Model Comparison (AUC + Recall) <span class="tag tag-blue">Phase 5</span></div>
+      <img src="plots/ml_model_comparison.png" alt="Model Comparison" />
+      <div class="insight"><strong>Random Forest</strong> achieves best ROC-AUC (0.6692) and balanced performance. Recall of 0.58 means it correctly identifies ~58% of actual readmissions — valuable for clinical triage even at this moderate accuracy level.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">ROC Curves – All 3 Models <span class="tag tag-blue">Phase 5</span></div>
+      <img src="plots/ml_roc_curves.png" alt="ROC Curves" />
+      <div class="insight">All three models outperform random (diagonal line, AUC=0.50). The moderate AUC of ~0.67 is expected given the absence of key clinical features (vital signs, lab values, nursing notes) that would significantly improve predictions.</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">Confusion Matrix – Random Forest <span class="tag tag-red">Phase 5</span></div>
+      <img src="plots/ml_confusion_matrix_rf.png" alt="Confusion Matrix" />
+      <div class="insight">The matrix shows the trade-off between true positives (correctly identified readmissions) and false negatives (missed readmissions). With balanced class weights, the model catches more actual readmissions at the cost of some false alarms.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Feature Importance – Random Forest ⭐ <span class="tag tag-green">Phase 5</span></div>
+      <img src="plots/ml_feature_importance.png" alt="Feature Importance" />
+      <div class="insight"><strong>Top drivers:</strong> number_inpatient (28.9%), discharge_disposition_id (13.2%), num_lab_procedures (6.6%), num_medications (6.3%), number_emergency (5.7%). Prior hospitalization history dominates — confirming that past utilization predicts future utilization.</div>
+    </div>
+  </div>
+
+  <div class="chart-grid single">
+    <div class="chart-card">
+      <div class="chart-header">Feature Importance – Detailed (Top 15) <span class="tag tag-blue">Phase 5</span></div>
+      <img src="plots/feature_importance_final.png" alt="Feature Importance Final" />
+      <div class="insight"><strong>Clinical implication:</strong> The fact that prior inpatient visits (28.9%) is the #1 feature confirms that repeat hospitalizers are at highest risk. Discharge disposition (#2) shows that where patients go after hospitalization strongly predicts if they'll return. Clinical teams should prioritize these two signals at discharge planning.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ SECTION: SEGMENTS ══════════════════ -->
+<section id="segments" class="section">
+  <div class="sec-title"><span class="icon">👥</span> Phase 5 – Patient Segmentation (K-Means, K=4)</div>
+
+  <div class="kpi-grid">
+    <div class="kpi" style="--kpi-color:#22c55e">
+      <div class="val">8.1%</div><div class="lbl">Seg 0 – Low Acuity<br><small>29,204 patients</small></div>
+    </div>
+    <div class="kpi" style="--kpi-color:#f97316">
+      <div class="val">12.2%</div><div class="lbl">Seg 1 – High Meds<br><small>21,745 patients</small></div>
+    </div>
+    <div class="kpi" style="--kpi-color:#ef4444">
+      <div class="val">24.4%</div><div class="lbl">Seg 2 – HIGH RISK ⭐<br><small>6,705 patients</small></div>
+    </div>
+    <div class="kpi" style="--kpi-color:#4f8ef7">
+      <div class="val">10.7%</div><div class="lbl">Seg 3 – Moderate<br><small>44,112 patients</small></div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">K-Means Elbow Method (Optimal K) <span class="tag tag-blue">Phase 5</span></div>
+      <img src="plots/kmeans_elbow.png" alt="Elbow Method" />
+      <div class="insight">The elbow curve shows diminishing returns after K=4, making it the optimal number of clusters. Additional clusters beyond 4 provide minimal new information while adding interpretive complexity.</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Patient Segments Readmission Rate <span class="tag tag-red">Phase 5</span></div>
+      <img src="plots/kmeans_segment_readmit.png" alt="Segment Readmission" />
+      <div class="insight"><strong>Segment 2 (High-Risk)</strong> has a 24.35% readmission rate — <strong>more than double the 11.16% average</strong>. These 6,705 patients are the highest-priority target for hospital care management programs.</div>
+    </div>
+  </div>
+
+  <div class="chart-grid single">
+    <div class="chart-card">
+      <div class="chart-header">Patient Segments – PCA Visualization <span class="tag tag-purple">Phase 5</span></div>
+      <img src="plots/kmeans_segments_pca.png" alt="PCA Segments" />
+      <div class="insight">PCA reduces the 8-feature clustering space to 2 dimensions for visualization. Segment 2 (red) shows clear separation from others — these patients have distinctly high prior emergency and inpatient visit profiles. The overlap between Seg 0 and Seg 3 reflects their clinical similarity.</div>
+    </div>
+  </div>
+
+  <div class="sec-title" style="margin-top:2rem"><span class="icon">📋</span> Segment Profiles</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Segment</th><th>Patients</th><th>Avg LOS</th><th>Avg Meds</th><th>Avg Lab Tests</th><th>Avg Emergency</th><th>Avg Inpatient</th><th>Readmit Rate</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td>Seg 0: Low-Acuity / Stable</td><td>29,204</td><td>3.0d</td><td>11.8</td><td>36.5</td><td>0.08</td><td>0.30</td><td class="rate-ok">8.09%</td><td>🟢 Standard</td></tr>
+        <tr><td>Seg 1: High Medication Burden</td><td>21,745</td><td>8.0d</td><td>25.2</td><td>56.5</td><td>0.11</td><td>0.51</td><td class="rate-mid">12.17%</td><td>🟠 Elevated</td></tr>
+        <tr style="background:var(--card2)"><td><strong>Seg 2: High-Risk / Emergency-Prone ⭐</strong></td><td><strong>6,705</strong></td><td>4.5d</td><td>17.3</td><td>44.8</td><td><strong>1.53</strong></td><td><strong>3.69</strong></td><td class="rate-high"><strong>24.35%</strong></td><td>🔴 PRIORITY</td></tr>
+        <tr><td>Seg 3: Moderate / Stable</td><td>44,112</td><td>3.5d</td><td>14.1</td><td>40.6</td><td>0.12</td><td>0.45</td><td class="rate-mid">10.69%</td><td>🔵 Moderate</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════ SECTION: SQL ═══════════════════════ -->
+<section id="sql" class="section">
+  <div class="sec-title"><span class="icon">🗃️</span> Phase 6 – SQL Query Results (19 Queries, SQLite)</div>
+
+  <div class="sec-title" style="font-size:1rem; border:none; margin-bottom:.5rem">Q19: Dashboard KPI Summary</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Encounters</th><th>Patients</th><th>Readmissions</th><th>Rate</th><th>Avg LOS</th><th>Avg Meds</th><th>Avg Lab</th><th>Avg Diagnoses</th></tr></thead>
+      <tbody>
+        <tr><td>101,766</td><td>71,518</td><td>11,357</td><td class="rate-high">11.16%</td><td>4.40d</td><td>16.02</td><td>43.10</td><td>7.42</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec-title" style="font-size:1rem; border:none; margin-bottom:.5rem">Q3: Readmission by Age Group</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Age Group</th><th>Patients</th><th>Readmissions</th><th>Rate</th></tr></thead>
+      <tbody>
+        <tr><td>[0-10)</td><td>161</td><td>3</td><td class="rate-ok">1.86%</td></tr>
+        <tr><td>[10-20)</td><td>691</td><td>40</td><td class="rate-ok">5.79%</td></tr>
+        <tr><td>[20-30)</td><td>1,657</td><td>236</td><td class="rate-high">14.24%</td></tr>
+        <tr><td>[30-40)</td><td>3,775</td><td>424</td><td class="rate-mid">11.23%</td></tr>
+        <tr><td>[40-50)</td><td>9,685</td><td>1,027</td><td class="rate-mid">10.60%</td></tr>
+        <tr><td>[50-60)</td><td>17,256</td><td>1,669</td><td class="rate-ok">9.67%</td></tr>
+        <tr><td>[60-70)</td><td>22,483</td><td>2,502</td><td class="rate-mid">11.13%</td></tr>
+        <tr><td>[70-80)</td><td>26,068</td><td>3,068</td><td class="rate-mid">11.77%</td></tr>
+        <tr><td>[80-90)</td><td>17,197</td><td>2,077</td><td class="rate-mid">12.08%</td></tr>
+        <tr><td>[90-100)</td><td>2,793</td><td>310</td><td class="rate-mid">11.10%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec-title" style="font-size:1rem; border:none; margin-bottom:.5rem">Q9: Emergency Visits vs Readmission</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Prior Emergency Visits</th><th>Patients</th><th>Readmissions</th><th>Rate</th></tr></thead>
+      <tbody>
+        <tr><td>0 Visits</td><td>90,383</td><td>9,470</td><td class="rate-mid">10.47%</td></tr>
+        <tr><td>1 Visit</td><td>7,677</td><td>1,102</td><td class="rate-mid">14.35%</td></tr>
+        <tr><td>2 Visits</td><td>2,042</td><td>373</td><td class="rate-high">18.27%</td></tr>
+        <tr><td>3 Visits</td><td>725</td><td>147</td><td class="rate-high">20.28%</td></tr>
+        <tr><td>4+ Visits</td><td>939</td><td>268</td><td class="rate-high">28.54%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec-title" style="font-size:1rem; border:none; margin-bottom:.5rem">Q15: Readmission by Utilization Category</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Utilization Category</th><th>Patients</th><th>Readmissions</th><th>Rate</th></tr></thead>
+      <tbody>
+        <tr><td>No Prior Utilization</td><td>55,828</td><td>4,564</td><td class="rate-ok">8.18%</td></tr>
+        <tr><td>Low (1-2 visits)</td><td>30,003</td><td>3,777</td><td class="rate-mid">12.59%</td></tr>
+        <tr><td>Moderate (3-5 visits)</td><td>11,510</td><td>1,887</td><td class="rate-mid">16.39%</td></tr>
+        <tr><td>High (6+ visits)</td><td>4,425</td><td>1,129</td><td class="rate-high">25.51%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec-title" style="font-size:1rem; border:none; margin-bottom:.5rem">Q17: Insulin Use vs Readmission</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Insulin Status</th><th>Patients</th><th>Rate</th></tr></thead>
+      <tbody>
+        <tr><td>Using Insulin</td><td>54,383</td><td class="rate-mid">12.14%</td></tr>
+        <tr><td>Not Using Insulin</td><td>47,383</td><td class="rate-ok">10.04%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec-title" style="font-size:1rem; border:none; margin-bottom:.5rem">Q8: Top 10 Specialties by LOS (min 100 patients)</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Specialty</th><th>Patients</th><th>Avg LOS</th><th>Readmit Rate</th></tr></thead>
+      <tbody>
+        <tr><td>Surgery-Cardiovascular/Thoracic</td><td>652</td><td>5.78d</td><td class="rate-ok">6.60%</td></tr>
+        <tr><td>Pulmonology</td><td>871</td><td>5.24d</td><td class="rate-mid">11.02%</td></tr>
+        <tr><td>Nephrology</td><td>1,613</td><td>5.02d</td><td class="rate-high">15.38%</td></tr>
+        <tr><td>Psychiatry</td><td>854</td><td>6.39d</td><td class="rate-mid">12.18%</td></tr>
+        <tr><td>InternalMedicine</td><td>14,635</td><td>4.58d</td><td class="rate-mid">11.25%</td></tr>
+        <tr><td>Surgery-General</td><td>3,099</td><td>4.55d</td><td class="rate-mid">11.04%</td></tr>
+        <tr><td>Family/GeneralPractice</td><td>7,440</td><td>4.36d</td><td class="rate-mid">11.87%</td></tr>
+        <tr><td>Emergency/Trauma</td><td>7,565</td><td>4.36d</td><td class="rate-mid">11.18%</td></tr>
+        <tr><td>Orthopedics</td><td>1,400</td><td>3.98d</td><td class="rate-ok">10.79%</td></tr>
+        <tr><td>Cardiology</td><td>5,352</td><td>3.53d</td><td class="rate-ok">7.94%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════ SECTION: INSIGHTS ══════════════════ -->
+<section id="insights" class="section">
+  <div class="sec-title"><span class="icon">💡</span> Phase 10 – Top 10 Key Business Insights</div>
+
+  <div style="display:grid; gap:1rem; margin-bottom:2rem">
+    <div class="chart-card">
+      <div class="chart-header">⭐ Insight 1: Emergency Visit History is the #1 Readmission Predictor <span class="tag tag-red">Critical</span></div>
+      <div class="insight">
+        <strong>Data:</strong> 4+ emergency visits → <strong>28.54%</strong> readmission rate vs 10.47% for zero visits.<br>
+        <strong>Business impact:</strong> A small group (939 patients with 4+ emergency visits) has nearly 3× the average risk.<br>
+        <strong>Action:</strong> Implement post-discharge care management calls within 48h for any patient with 2+ prior emergency visits.
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">⭐ Insight 2: High-Risk Segment Has 24.4% Readmission Rate <span class="tag tag-red">Critical</span></div>
+      <div class="insight">
+        <strong>Data:</strong> 6,705 patients (6.6% of total) with high emergency + inpatient history → <strong>24.35% readmit rate</strong>.<br>
+        <strong>Business impact:</strong> This segment drives disproportionate readmissions despite being a small subset.<br>
+        <strong>Action:</strong> Create a dedicated care management program specifically for Segment 2 patients.
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Insight 3: 49% Medical Specialty Data is Missing <span class="tag tag-orange">Data Quality</span></div>
+      <div class="insight">
+        <strong>Data:</strong> 49,949 of 101,766 encounters have no specialty recorded.<br>
+        <strong>Business impact:</strong> Specialty-level analytics and staffing decisions are based on incomplete data.<br>
+        <strong>Action:</strong> Mandate specialty documentation at every admission. Fix EHR workflow to require this field.
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Insight 4: 96.87% Weight Data Missing <span class="tag tag-orange">Data Quality</span></div>
+      <div class="insight">
+        <strong>Data:</strong> 98,569 of 101,766 weight values missing (coded as "?" in raw data).<br>
+        <strong>Business impact:</strong> BMI-based risk stratification is impossible. Weight is clinically critical for diabetes patients.<br>
+        <strong>Action:</strong> Integrate weight capture into EHR admission workflow. Track completion rate as a quality metric.
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Insight 5: Medication Burden Predicts Length of Stay <span class="tag tag-blue">Operational</span></div>
+      <div class="insight">
+        <strong>Data:</strong> Low meds (1-5): 2.28d → Very High (26+): <strong>7.31 days</strong>. 3× difference in LOS.<br>
+        <strong>Business impact:</strong> High-medication patients consume ~3× the bed-days of low-medication patients.<br>
+        <strong>Action:</strong> Pharmacy-led medication reconciliation at discharge for patients with 20+ medications.
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Insight 6: High-Utilization Patients Need Priority Discharge Planning <span class="tag tag-red">Clinical</span></div>
+      <div class="insight">
+        <strong>Data:</strong> High utilization (6+ visits): <strong>25.51%</strong> readmit vs 8.18% for no prior visits.<br>
+        <strong>Business impact:</strong> This 4.3% of patients (4,425 people) accounts for disproportionate hospital costs and bed usage.<br>
+        <strong>Action:</strong> Auto-flag any patient with 6+ combined prior visits for enhanced discharge planning.
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Insight 7: Diabetes Medication Alone is a Weak Predictor <span class="tag tag-blue">Clinical</span></div>
+      <div class="insight">
+        <strong>Data:</strong> Diabetes med Yes: 11.63% vs No: 9.60%. Difference is small (~2%).<br>
+        <strong>Business impact:</strong> Simply being on diabetes medication does not substantially predict readmission.<br>
+        <strong>Action:</strong> Focus on diabetes patients WITH high emergency visit history — the combination is the real risk signal.
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Insight 8: The ML Model Catches ~58% of Future Readmissions <span class="tag tag-purple">ML</span></div>
+      <div class="insight">
+        <strong>Data:</strong> Random Forest achieves ROC-AUC 0.6692, Recall 0.5795.<br>
+        <strong>Business impact:</strong> Even at moderate accuracy, flagging 58% of high-risk patients enables proactive intervention.<br>
+        <strong>Action:</strong> Pilot the model in a staging environment. Set probability threshold based on care team capacity.
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Insight 9: 3-5 Day Stays are the Largest Group (40.9%) <span class="tag tag-blue">Operational</span></div>
+      <div class="insight">
+        <strong>Data:</strong> 41,646 patients stay 3-5 days — the single largest group. Readmit rate: 11.37%.<br>
+        <strong>Business impact:</strong> Optimizing care transitions for this group has the largest system-wide volume impact.<br>
+        <strong>Action:</strong> Implement structured discharge planning protocol starting at Day 2 for all moderate-stay patients.
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">Insight 10: Race/Gender Differences Are Clinically Small <span class="tag tag-blue">Equity</span></div>
+      <div class="insight">
+        <strong>Data:</strong> Readmit rates: Caucasian 11.29%, AfricanAmerican 11.22%, Hispanic 10.41%, Asian 10.14%.<br>
+        <strong>⚠️ Important:</strong> These small differences should NOT be used to deprioritize any group's care.<br>
+        <strong>Action:</strong> Supplement with SDOH (income, housing, food security) data for responsible equity analysis.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ SECTION: RECOMMENDATIONS ══════════════ -->
+<section id="recommendations" class="section">
+  <div class="sec-title"><span class="icon">✅</span> Phase 11 – Data-Driven Recommendations</div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Recommendation</th><th>Data Evidence</th><th>Impact</th><th>Stakeholder</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><strong>High-Risk Care Management Program</strong> for Segment 2 patients</td>
+          <td>24.35% readmit rate (6,705 patients)</td>
+          <td class="rate-high">🔴 Very High</td>
+          <td>COO, CMO</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><strong>Post-Discharge Follow-Up Calls</strong> within 48-72h for 2+ emergency history patients</td>
+          <td>28.54% readmit for 4+ emergency visits</td>
+          <td class="rate-high">🔴 High</td>
+          <td>Case Management</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><strong>Medication Reconciliation Protocol</strong> for patients with 20+ medications</td>
+          <td>26+ meds → 7.31d avg stay (3× lower meds)</td>
+          <td class="rate-mid">🟠 High</td>
+          <td>Pharmacy, Physicians</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><strong>Improve Data Documentation</strong> – specialty (49% missing) and weight (97% missing)</td>
+          <td>Data quality audit findings</td>
+          <td class="rate-mid">🟠 High</td>
+          <td>CIO, Admin Staff</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><strong>Enhanced Monitoring</strong> for medication-changed patients at discharge</td>
+          <td>Med changed: 11.82% vs No change: 10.59%</td>
+          <td class="rate-mid">🟡 Medium</td>
+          <td>Physicians, Nurses</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><strong>Pilot ML Model Deployment</strong> – flag high-risk patients at discharge</td>
+          <td>Random Forest: AUC 0.6692, Recall 0.58</td>
+          <td class="rate-mid">🟡 Medium</td>
+          <td>Analytics, CMO</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><strong>Structured Discharge Planning</strong> starting Day 2 for all admissions</td>
+          <td>40.9% of patients stay 3-5 days</td>
+          <td class="rate-mid">🟡 Medium</td>
+          <td>Nursing Directors</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td><strong>Specialty Capacity Review</strong> for high-LOS specialties (Nephrology: 5d, Surgery-CV: 5.8d)</td>
+          <td>Q8 specialty LOS analysis</td>
+          <td class="rate-ok">🟢 Operational</td>
+          <td>Department Heads</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td><strong>Monthly Readmission Dashboard</strong> tracking rate by utilization category</td>
+          <td>High utilization: 25.51% readmit rate</td>
+          <td class="rate-ok">🟢 Monitoring</td>
+          <td>Hospital Board, CEO</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td><strong>Collect SDOH Data</strong> at admission for complete risk stratification</td>
+          <td>SDOH factors absent from current dataset</td>
+          <td class="rate-ok">🟢 Long-term</td>
+          <td>Strategy Team</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="alert alert-info" style="margin-top:1.5rem">
+    <span class="alert-icon">ℹ️</span>
+    <div>None of these recommendations claim to guarantee reduced readmissions. They are data-informed priorities for clinical investigation and validation. All medical decisions remain with licensed healthcare providers.</div>
+  </div>
+
+  <div class="sec-title" style="margin-top:2rem"><span class="icon">⚠️</span> Project Limitations</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Limitation</th><th>Impact on Analysis</th></tr></thead>
+      <tbody>
+        <tr><td>No date fields</td><td>Time-series analysis impossible</td></tr>
+        <tr><td>Weight 96.87% missing</td><td>BMI analysis not feasible</td></tr>
+        <tr><td>Specialty 49.08% missing</td><td>Specialty analysis covers ~50% of data</td></tr>
+        <tr><td>ML ROC-AUC ~0.67</td><td>Moderate accuracy — needs clinical features (vitals, labs)</td></tr>
+        <tr><td>No cost/billing data</td><td>Financial impact cannot be quantified</td></tr>
+        <tr><td>Historical data (1999–2008)</td><td>Clinical practices have evolved significantly</td></tr>
+        <tr><td>Diabetic patients only</td><td>Cannot generalize to all hospital patients</td></tr>
+        <tr><td>No SDOH data</td><td>Racial/gender differences cannot be explained causally</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ──────────────────────────── FOOTER ──────────────────────── -->
+<footer>
+  <p><strong>Hospital Readmission Analysis – DACS08 Portfolio Project</strong></p>
+  <p>Dataset: <a href="https://archive.ics.uci.edu/dataset/296/diabetes+130-us+hospitals+for+years+1999-2008" target="_blank">UCI Diabetes 130-US Hospitals (1999–2008)</a> &nbsp;|&nbsp;
+     Tools: Python · scikit-learn · pandas · SQL · Power BI &nbsp;|&nbsp;
+     <a href="https://github.com/LORDhariwansh/hospital-readmission-analysis" target="_blank">GitHub Repository</a>
+  </p>
+  <p style="margin-top:.5rem; font-size:.75rem">All numbers are actual values from the dataset. No fabricated data or results.</p>
+</footer>
+
+<!-- ──────────────────────────── JS ──────────────────────────── -->
+<script>
+  function show(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
