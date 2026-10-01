@@ -1,0 +1,15 @@
+﻿# Large data files (too big for GitHub free tier)
+diabetic_data.csv
+diabetic_data_cleaned.csv
+diabetes_uci.zip
+hospital_data.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Temp files
+*.tmp
+*.log

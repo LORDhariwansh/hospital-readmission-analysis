@@ -1,0 +1,413 @@
+-- ==============================================================
+-- HOSPITAL READMISSION ANALYSIS
+-- Phase 8 – Power BI DAX Measures
+-- Dataset: UCI Diabetes 130-US Hospitals
+-- ==============================================================
+
+-- ============================================================
+-- TABLE NAME ASSUMPTION: hospital_data
+-- All measures assume data is loaded as a single flat table
+-- named "hospital_data" in Power BI
+-- ============================================================
+
+
+-- ==============================================================
+-- KPI MEASURES
+-- ==============================================================
+
+-- 1. Total Encounters
+-- Purpose: Count of all hospital encounters (rows) in the dataset
+-- Formula: COUNTROWS of the table
+Total Encounters = 
+    COUNTROWS( hospital_data )
+
+-- --------------------------------------------------------
+
+-- 2. Unique Patients
+-- Purpose: Count of distinct patient IDs (one patient can have multiple encounters)
+-- DISTINCTCOUNT removes duplicates
+Unique Patients = 
+    DISTINCTCOUNT( hospital_data[patient_nbr] )
+
+-- --------------------------------------------------------
+
+-- 3. Total Readmissions (30-day)
+-- Purpose: Count of encounters where patient was readmitted within 30 days
+-- readmitted_binary = 1 means readmitted within 30 days
+Total Readmissions = 
+    CALCULATE(
+        COUNTROWS( hospital_data ),
+        hospital_data[readmitted_binary] = 1
+    )
+
+-- --------------------------------------------------------
+
+-- 4. Readmission Rate (%)
+-- Purpose: Percentage of encounters resulting in 30-day readmission
+-- DIVIDE safely handles division by zero (returns 0 if denominator is 0)
+Readmission Rate % = 
+    DIVIDE(
+        [Total Readmissions],
+        [Total Encounters],
+        0
+    ) * 100
+
+-- --------------------------------------------------------
+
+-- 5. Non-Readmissions
+-- Purpose: Count of encounters without 30-day readmission
+Non-Readmissions = 
+    CALCULATE(
+        COUNTROWS( hospital_data ),
+        hospital_data[readmitted_binary] = 0
+    )
+
+-- --------------------------------------------------------
+
+-- 6. Readmitted > 30 Days (for context)
+-- Purpose: Count of patients readmitted after 30 days
+Readmitted After 30 Days = 
+    CALCULATE(
+        COUNTROWS( hospital_data ),
+        hospital_data[readmitted] = ">30"
+    )
+
+-- --------------------------------------------------------
+
+-- 7. Not Readmitted (Total)
+-- Purpose: Count of patients with no readmission
+Not Readmitted = 
+    CALCULATE(
+        COUNTROWS( hospital_data ),
+        hospital_data[readmitted] = "NO"
+    )
+
+-- ==============================================================
+-- CLINICAL MEASURES
+-- ==============================================================
+
+-- 8. Average Length of Stay
+-- Purpose: Average number of days patients spent in hospital
+-- AVERAGEX iterates the table and averages time_in_hospital
+Avg Length of Stay = 
+    AVERAGE( hospital_data[time_in_hospital] )
+
+-- --------------------------------------------------------
+
+-- 9. Average Number of Medications
+-- Purpose: Average number of medications per encounter
+Avg Medications = 
+    AVERAGE( hospital_data[num_medications] )
+
+-- --------------------------------------------------------
+
+-- 10. Average Lab Procedures
+-- Purpose: Average number of lab tests performed per encounter
+Avg Lab Procedures = 
+    AVERAGE( hospital_data[num_lab_procedures] )
+
+-- --------------------------------------------------------
+
+-- 11. Average Procedures
+-- Purpose: Average number of clinical procedures per encounter
+Avg Procedures = 
+    AVERAGE( hospital_data[num_procedures] )
+
+-- --------------------------------------------------------
+
+-- 12. Average Diagnoses
+-- Purpose: Average number of diagnoses recorded per encounter
+Avg Diagnoses = 
+    AVERAGE( hospital_data[number_diagnoses] )
+
+-- --------------------------------------------------------
+
+-- 13. Average Emergency Visits (Prior Year)
+-- Purpose: Average prior emergency visits per encounter (from past year)
+Avg Emergency Visits = 
+    AVERAGE( hospital_data[number_emergency] )
+
+-- --------------------------------------------------------
+
+-- 14. Average Outpatient Visits (Prior Year)
+-- Purpose: Average prior outpatient visits per encounter (from past year)
+Avg Outpatient Visits = 
+    AVERAGE( hospital_data[number_outpatient] )
+
+-- --------------------------------------------------------
+
+-- 15. Average Inpatient Visits (Prior Year)
+-- Purpose: Average prior inpatient visits per encounter (from past year)
+Avg Inpatient Visits = 
+    AVERAGE( hospital_data[number_inpatient] )
+
+-- ==============================================================
+-- PERCENTAGE MEASURES
+-- ==============================================================
+
+-- 16. % Patients on Diabetes Medication
+-- Purpose: What percentage of patients are on diabetes medication?
+Pct Diabetes Medication = 
+    DIVIDE(
+        CALCULATE(
+            COUNTROWS( hospital_data ),
+            hospital_data[diabetesMed] = "Yes"
+        ),
+        [Total Encounters],
+        0
+    ) * 100
+
+-- --------------------------------------------------------
+
+-- 17. % Patients with Medication Change
+-- Purpose: What percentage had their diabetes medication changed?
+Pct Medication Changed = 
+    DIVIDE(
+        CALCULATE(
+            COUNTROWS( hospital_data ),
+            hospital_data[change] = "Ch"
+        ),
+        [Total Encounters],
+        0
+    ) * 100
+
+-- --------------------------------------------------------
+
+-- 18. % High Utilization Patients
+-- Purpose: Patients with 6+ combined prior visits
+Pct High Utilization = 
+    DIVIDE(
+        CALCULATE(
+            COUNTROWS( hospital_data ),
+            hospital_data[number_inpatient]
+            + hospital_data[number_outpatient]
+            + hospital_data[number_emergency] >= 6
+        ),
+        [Total Encounters],
+        0
+    ) * 100
+
+-- ==============================================================
+-- SEGMENTATION MEASURES
+-- ==============================================================
+
+-- 19. Readmission Rate – Diabetes Med Yes
+-- Purpose: 30-day readmission rate ONLY for patients on diabetes medication
+Readmission Rate - Diabetes Med Yes % = 
+    CALCULATE(
+        [Readmission Rate %],
+        hospital_data[diabetesMed] = "Yes"
+    )
+
+-- --------------------------------------------------------
+
+-- 20. Readmission Rate – Diabetes Med No
+-- Purpose: 30-day readmission rate for patients NOT on diabetes medication
+Readmission Rate - Diabetes Med No % = 
+    CALCULATE(
+        [Readmission Rate %],
+        hospital_data[diabetesMed] = "No"
+    )
+
+-- --------------------------------------------------------
+
+-- 21. Readmission Rate – Medication Changed
+-- Purpose: Readmission rate for patients whose medication was changed
+Readmission Rate - Med Changed % = 
+    CALCULATE(
+        [Readmission Rate %],
+        hospital_data[change] = "Ch"
+    )
+
+-- --------------------------------------------------------
+
+-- 22. Readmission Rate – No Medication Change
+-- Purpose: Readmission rate for patients with no medication change
+Readmission Rate - No Change % = 
+    CALCULATE(
+        [Readmission Rate %],
+        hospital_data[change] = "No"
+    )
+
+-- --------------------------------------------------------
+
+-- 23. Readmission Rate – High Utilization
+-- Purpose: Readmission rate for high-utilization patients (6+ prior visits)
+Readmission Rate - High Utilization % = 
+    CALCULATE(
+        [Readmission Rate %],
+        hospital_data[number_inpatient]
+        + hospital_data[number_outpatient]
+        + hospital_data[number_emergency] >= 6
+    )
+
+-- ==============================================================
+-- STAY CATEGORY MEASURES
+-- ==============================================================
+
+-- 24. Avg LOS – Short Stay (1-2 days)
+-- Purpose: Average LOS for patients in hospital 1-2 days
+Avg LOS - Short Stay = 
+    CALCULATE(
+        [Avg Length of Stay],
+        hospital_data[time_in_hospital] <= 2
+    )
+
+-- --------------------------------------------------------
+
+-- 25. Readmission Rate – Short Stay
+-- Purpose: Readmission rate for short-stay patients
+Readmission Rate - Short Stay % = 
+    CALCULATE(
+        [Readmission Rate %],
+        hospital_data[time_in_hospital] <= 2
+    )
+
+-- --------------------------------------------------------
+
+-- 26. Readmission Rate – Extended Stay (9+ days)
+-- Purpose: Readmission rate for extended-stay patients
+Readmission Rate - Extended Stay % = 
+    CALCULATE(
+        [Readmission Rate %],
+        hospital_data[time_in_hospital] >= 9
+    )
+
+-- ==============================================================
+-- COMPARISON MEASURES (for variance analysis)
+-- ==============================================================
+
+-- 27. Total Prior Visits per Encounter
+-- Purpose: Calculated column – sum of all prior visit types
+-- (Use as a CALCULATED COLUMN, not a measure)
+-- DAX Column formula:
+Total Prior Visits = 
+    hospital_data[number_inpatient]
+    + hospital_data[number_outpatient]
+    + hospital_data[number_emergency]
+
+-- --------------------------------------------------------
+
+-- 28. Readmission Rate vs Overall
+-- Purpose: How much does selected group's readmission rate deviate from overall?
+Readmission Rate Delta = 
+    [Readmission Rate %] - 
+    CALCULATE(
+        [Readmission Rate %],
+        ALL( hospital_data )
+    )
+
+-- ==============================================================
+-- CALCULATED COLUMNS (to add in Power Query or DAX)
+-- ==============================================================
+
+-- 29. Readmission Status Label (Calculated Column)
+-- Purpose: Human-readable label for readmitted_binary
+Readmission Status = 
+    IF(
+        hospital_data[readmitted_binary] = 1,
+        "Readmitted within 30 Days",
+        "Not Readmitted (or After 30 Days)"
+    )
+
+-- --------------------------------------------------------
+
+-- 30. Hospital Stay Category (Calculated Column)
+Stay Category = 
+    SWITCH(
+        TRUE(),
+        hospital_data[time_in_hospital] <= 2, "1-2 Days (Short)",
+        hospital_data[time_in_hospital] <= 5, "3-5 Days (Moderate)",
+        hospital_data[time_in_hospital] <= 8, "6-8 Days (Long)",
+        "9+ Days (Extended)"
+    )
+
+-- --------------------------------------------------------
+
+-- 31. Medication Group (Calculated Column)
+Medication Group = 
+    SWITCH(
+        TRUE(),
+        hospital_data[num_medications] <= 5,  "Low (1-5 Meds)",
+        hospital_data[num_medications] <= 15, "Moderate (6-15 Meds)",
+        hospital_data[num_medications] <= 25, "High (16-25 Meds)",
+        "Very High (26+ Meds)"
+    )
+
+-- --------------------------------------------------------
+
+-- 32. Utilization Category (Calculated Column)
+Utilization Category = 
+    VAR TotalVisits = 
+        hospital_data[number_inpatient]
+        + hospital_data[number_outpatient]
+        + hospital_data[number_emergency]
+    RETURN
+    SWITCH(
+        TRUE(),
+        TotalVisits = 0, "No Prior Utilization",
+        TotalVisits <= 2, "Low (1-2 Visits)",
+        TotalVisits <= 5, "Moderate (3-5 Visits)",
+        "High (6+ Visits)"
+    )
+
+-- --------------------------------------------------------
+
+-- 33. Diagnosis Burden (Calculated Column)
+Diagnosis Burden = 
+    SWITCH(
+        TRUE(),
+        hospital_data[number_diagnoses] <= 3,  "Low (1-3 Diagnoses)",
+        hospital_data[number_diagnoses] <= 6,  "Moderate (4-6 Diagnoses)",
+        hospital_data[number_diagnoses] <= 9,  "High (7-9 Diagnoses)",
+        "Very High (10+ Diagnoses)"
+    )
+
+-- ==============================================================
+-- TITLE MEASURE (Dynamic Dashboard Title)
+-- ==============================================================
+
+-- 34. Dashboard Title (Dynamic)
+-- Purpose: Shows current filter context in the title
+Dashboard Title = 
+    "Hospital Readmission Analysis | "
+    & SELECTEDVALUE( hospital_data[age], "All Ages" )
+    & " | "
+    & SELECTEDVALUE( hospital_data[gender], "All Genders" )
+
+-- ==============================================================
+-- SUMMARY: DAX MEASURE EXPLANATIONS
+-- ==============================================================
+/*
+MEASURE NAME                        | WHAT IT CALCULATES
+------------------------------------|----------------------------------------------
+Total Encounters                    | All rows = all hospital visits
+Unique Patients                     | Distinct patient IDs (removes repeat visits)
+Total Readmissions                  | Count where readmitted within 30 days
+Readmission Rate %                  | % of encounters with 30-day readmission
+Non-Readmissions                    | Count where NOT readmitted in 30 days
+Readmitted After 30 Days            | Count readmitted >30 days
+Not Readmitted                      | Count with "NO" readmission
+Avg Length of Stay                  | Average days in hospital
+Avg Medications                     | Average medication count
+Avg Lab Procedures                  | Average lab tests
+Avg Procedures                      | Average clinical procedures
+Avg Diagnoses                       | Average diagnoses per encounter
+Avg Emergency Visits                | Average prior emergency visits
+Avg Outpatient Visits               | Average prior outpatient visits
+Avg Inpatient Visits                | Average prior inpatient visits
+Pct Diabetes Medication             | % patients on diabetes medication
+Pct Medication Changed              | % patients with changed medication
+Pct High Utilization                | % patients with 6+ prior visits
+Readmission Rate - Diabetes Med Yes | Readmit % for diabetes med patients
+Readmission Rate - Diabetes Med No  | Readmit % for non-diabetes med patients
+Readmission Rate - Med Changed      | Readmit % when medication changed
+Readmission Rate - No Change        | Readmit % when no medication change
+Readmission Rate - High Utilization | Readmit % for high-utilization patients
+Readmission Rate Delta              | Deviation from overall readmission rate
+
+DIVISION BY ZERO HANDLING:
+All division is performed using DIVIDE(numerator, denominator, 0)
+where "0" is the alternate result when denominator = 0.
+This prevents errors when filtering produces empty subsets.
+*/

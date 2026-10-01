@@ -1,0 +1,51 @@
+Column,DType,Missing_Values,Missing_Pct,Unique_Values,Action
+encounter_id,int64,0,0.0,101766,No action needed
+patient_nbr,int64,0,0.0,71518,No action needed
+race,str,0,0.0,6,No action needed
+gender,str,0,0.0,3,No action needed
+age,str,0,0.0,10,No action needed
+weight,str,0,0.0,10,Convert ? to NaN; 96.8% missing – retain but flag
+admission_type_id,int64,0,0.0,8,No action needed
+discharge_disposition_id,int64,0,0.0,26,No action needed
+admission_source_id,int64,0,0.0,17,No action needed
+time_in_hospital,int64,0,0.0,14,No action needed
+payer_code,str,0,0.0,18,No action needed
+medical_specialty,str,0,0.0,73,No action needed
+num_lab_procedures,int64,0,0.0,118,No action needed
+num_procedures,int64,0,0.0,7,No action needed
+num_medications,int64,0,0.0,75,No action needed
+number_outpatient,int64,0,0.0,39,No action needed
+number_emergency,int64,0,0.0,33,No action needed
+number_inpatient,int64,0,0.0,21,No action needed
+diag_1,str,0,0.0,717,No action needed
+diag_2,str,0,0.0,749,No action needed
+diag_3,str,0,0.0,790,No action needed
+number_diagnoses,int64,0,0.0,16,No action needed
+max_glu_serum,str,96420,94.75,3,94.75% missing – retain but note limitation
+A1Cresult,str,84748,83.28,3,83.28% missing – retain but note limitation
+metformin,str,0,0.0,4,No action needed
+repaglinide,str,0,0.0,4,No action needed
+nateglinide,str,0,0.0,4,No action needed
+chlorpropamide,str,0,0.0,4,No action needed
+glimepiride,str,0,0.0,4,No action needed
+acetohexamide,str,0,0.0,2,No action needed
+glipizide,str,0,0.0,4,No action needed
+glyburide,str,0,0.0,4,No action needed
+tolbutamide,str,0,0.0,2,No action needed
+pioglitazone,str,0,0.0,4,No action needed
+rosiglitazone,str,0,0.0,4,No action needed
+acarbose,str,0,0.0,4,No action needed
+miglitol,str,0,0.0,4,No action needed
+troglitazone,str,0,0.0,2,No action needed
+tolazamide,str,0,0.0,3,No action needed
+examide,str,0,0.0,1,No action needed
+citoglipton,str,0,0.0,1,No action needed
+insulin,str,0,0.0,4,No action needed
+glyburide-metformin,str,0,0.0,4,No action needed
+glipizide-metformin,str,0,0.0,2,No action needed
+glimepiride-pioglitazone,str,0,0.0,2,No action needed
+metformin-rosiglitazone,str,0,0.0,2,No action needed
+metformin-pioglitazone,str,0,0.0,2,No action needed
+change,str,0,0.0,2,No action needed
+diabetesMed,str,0,0.0,2,No action needed
+readmitted,str,0,0.0,3,No action needed
